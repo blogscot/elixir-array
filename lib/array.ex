@@ -4,6 +4,8 @@ defmodule Array do
   """
   defstruct content: nil
 
+  @behaviour Access
+
   @type t :: %__MODULE__{content: :array.array()}
   @type index :: non_neg_integer
   @type element :: any
@@ -15,7 +17,7 @@ defmodule Array do
   Creates a new, extendible array with initial size zero.
   The default value is the atom nil, not undefined.
   """
-  @spec new() :: t 
+  @spec new() :: t
   def new() do
     %Array{content: :array.new({:default, nil})}
   end
@@ -96,7 +98,7 @@ defmodule Array do
   @doc """
   Folds the elements of the array right-to-left using the given function and initial accumulator value.
   The elements are visited in order from the highest index to the lowest.
- 
+
   If `fun` is not a function, the call raises `ArgumentError`.
   """
   @spec foldr(t, acc, (index, element, acc -> acc)) :: acc when acc: var
@@ -320,16 +322,33 @@ defmodule Array do
   @spec to_orddict(t) :: [{index, element}]
   def to_orddict(%Array{content: c}),
     do: :array.to_orddict(c)
-end
 
-defimpl Access, for: Array do
-  def get(arr, idx) do
-    Array.get(arr, idx)
+  @doc """
+  Callbacks for the Access Behaviour
+  """
+  def get(arr, idx, default) do
+    res = Array.get(arr, idx)
+    case res do
+      {'EXIT', {:badarg, _}} -> default
+      _ -> res
+    end
   end
 
   def get_and_update(arr, idx, fun) do
     {get, update} = fun.(Array.get(arr, idx))
     {get, Array.set(arr, idx, update)}
+  end
+
+  def fetch(arr, idx) do
+    res = Array.get(arr, idx)
+    case res do
+      {'EXIT', {:badarg, _}} -> :error
+      _ -> {:ok, res}
+    end
+  end
+
+  def pop(arr, idx) do
+    {Array.get(arr, idx), arr}
   end
 end
 
